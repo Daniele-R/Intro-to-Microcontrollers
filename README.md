@@ -14,7 +14,7 @@ For the first part of the course, we worked with Assembly for this archaic chip 
 Joy, happiness, what else to say. Now we were actually doing something that could be translated to "industry" as we stopped using assembly for that old-ass chip and did some basic embedded programming in C. NOW WE WERE TALKING.
 
 ## Notes
-- Please, if you seeing this, disregard the CHAOS of the code. I literally rushed every class to get it done and get out of there as I wanted to go home. I might or might not pass the code through GPT to make it look nice and clear.
+- Please, if you seeing this, disregard the CHAOS of the code. I literally rushed every class to get it done and get out of there as I wanted to go home. Those that are 1 piece of code was re-written in a proper way by GPT, those that are multiple files were not. Please, do not judge me for this.
 - The project was divided in 2 sections, electrical and computer (coding). I did the coding part while my friend and partner Brandon Contreras did the electical part (wiring).
 - A pre-made board was given to us for this course. Attached a picture of it
 ![image](https://github.com/user-attachments/assets/14c47e3d-212f-4e74-a146-19f665bfc178)
