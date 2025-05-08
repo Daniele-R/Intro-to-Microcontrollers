@@ -16,5 +16,5 @@ Joy, happiness, what else to say. Now we were actually doing something that coul
 ## Notes
 - Please, if you seeing this, disregard the CHAOS of the code. I literally rushed every class to get it done and get out of there as I wanted to go home. I might or might not pass the code through GPT to make it look nice and clear.
 - The project was divided in 2 sections, electrical and computer (coding). I did the coding part while my friend and partner Brandon Contreras did the electical part (wiring).
-- A pre-made board was given to us for this course. Attached a picture of it:
+- A pre-made board was given to us for this course. Attached a picture of it
 ![image](https://github.com/user-attachments/assets/14c47e3d-212f-4e74-a146-19f665bfc178)
