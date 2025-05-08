@@ -1,0 +1,235 @@
+/***************************************************************
+ * ECE 3301L.01 - Lab #6
+ * Bench 7
+ * Brandon Contreras & Daniele Ricciardelli
+ ***************************************************************/
+
+#include <p18f4620.h>
+#include <stdio.h>
+#include <math.h>
+#include <usart.h>
+
+// CONFIGURATION BITS
+#pragma config OSC = INTIO67
+#pragma config WDT = OFF
+#pragma config LVP = OFF
+#pragma config BOREN = OFF
+#pragma config CCP2MX = PORTBE
+
+/***************************************************************
+ * MACROS
+ ***************************************************************/
+#define D1_RED    PORTCbits.RC3
+#define D1_GREEN  PORTCbits.RC4
+#define D1_BLUE   PORTCbits.RC5
+
+#define D2_RED    PORTEbits.RE0
+#define D2_GREEN  PORTEbits.RE1
+#define D2_BLUE   PORTEbits.RE2
+
+#define DECIMAL   PORTDbits.RD7
+
+/***************************************************************
+ * 7-Segment Display Arrays
+ ***************************************************************/
+char array_with_dp[10] = {0x40,0x79,0x24,0x30,0x19,0x12,0x02,0x78,0x00,0x10};
+char array_no_dp[10]   = {0x40,0x79,0x24,0x30,0x19,0x12,0x02,0x78,0x00,0x10};
+
+/***************************************************************
+ * FUNCTION PROTOTYPES
+ ***************************************************************/
+void putch(char);
+void Init_UART(void);
+void WAIT_1_SEC(void);
+
+void Init_ADC(void);
+unsigned int Get_full_ADC(void);
+void Select_ADC_Channel(char);
+
+void Init_TRIS(void);
+
+void Activate_Buzzer(void);
+void Deactivate_Buzzer(void);
+
+void DO_DISPLAY_D1(int);
+void DO_DISPLAY_D2(float);
+
+void Display_Lower_Digit_With_DP(char);
+void Display_Upper_Digit_With_DP(char);
+void Display_Lower_Digit_No_DP(char);
+void Display_Upper_Digit_No_DP(char);
+
+/***************************************************************
+ * UART FUNCTIONS
+ ***************************************************************/
+void putch(char c)
+{
+    while (!TRMT);
+    TXREG = c;
+}
+
+void Init_UART(void)
+{
+    OpenUSART(USART_TX_INT_OFF & USART_RX_INT_OFF &
+              USART_ASYNCH_MODE & USART_EIGHT_BIT &
+              USART_CONT_RX & USART_BRGH_HIGH, 25);
+    OSCCON = 0x60;
+}
+
+void WAIT_1_SEC(void)
+{
+    for (int j = 0; j < 0xFFFF; j++);
+}
+
+/***************************************************************
+ * ADC FUNCTIONS
+ ***************************************************************/
+void Init_ADC(void)
+{
+    ADCON0 = 0x01;
+    ADCON1 = 0x1E; // Configure AN0-AN4 as analog
+    ADCON2 = 0xA9;
+}
+
+unsigned int Get_full_ADC(void)
+{
+    ADCON0bits.GO = 1;
+    while (ADCON0bits.DONE);
+    return (ADRESH << 8) + ADRESL;
+}
+
+void Select_ADC_Channel(char channel)
+{
+    ADCON0 = (channel * 4) + 1;
+}
+
+/***************************************************************
+ * I/O INITIALIZATION
+ ***************************************************************/
+void Init_TRIS(void)
+{
+    TRISA = 0xFF;
+    TRISB = 0x00;
+    TRISC = 0x00;
+    TRISD = 0x00;
+    TRISE = 0x00;
+}
+
+/***************************************************************
+ * BUZZER CONTROL
+ ***************************************************************/
+void Activate_Buzzer(void)
+{
+    PR2 = 0b11111001;
+    T2CON = 0b00000101;
+    CCPR2L = 0b01001010;
+    CCP2CON = 0b00111100;
+}
+
+void Deactivate_Buzzer(void)
+{
+    CCP2CON = 0x00;
+    PORTCbits.RC1 = 0;
+}
+
+/***************************************************************
+ * D1 DISPLAY - RGB based on resistor value
+ ***************************************************************/
+void DO_DISPLAY_D1(int resistor)
+{
+    int n = (int)(resistor / 10);
+    if (n > 7) n = 7;
+    PORTC = (PORTC & 0xF8) | (n << 3);
+}
+
+/***************************************************************
+ * D2 DISPLAY - RGB and Buzzer logic based on resistor value
+ ***************************************************************/
+void SET_D2_OFF(void)   { D2_RED = 0; D2_GREEN = 0; D2_BLUE = 0; }
+void SET_D2_RED(void)   { D2_RED = 1; D2_GREEN = 0; D2_BLUE = 0; }
+void SET_D2_GREEN(void) { D2_RED = 0; D2_GREEN = 1; D2_BLUE = 0; }
+void SET_D2_BLUE(void)  { D2_RED = 0; D2_GREEN = 0; D2_BLUE = 1; }
+void SET_D2_WHITE(void) { D2_RED = 1; D2_GREEN = 1; D2_BLUE = 1; }
+
+void DO_DISPLAY_D2(float resistor)
+{
+    if      (resistor > 0.3)                      SET_D2_OFF();
+    else if (resistor >= 0.2 && resistor <= 0.3)  SET_D2_RED();
+    else if (resistor >= 0.1 && resistor < 0.2)   SET_D2_GREEN();
+    else if (resistor >= 0.07 && resistor < 0.1)  SET_D2_BLUE();
+    else if (resistor < 0.07)                     SET_D2_WHITE();
+
+    if (resistor < 0.07)
+        Activate_Buzzer();
+    else
+        Deactivate_Buzzer();
+}
+
+/***************************************************************
+ * 7-SEGMENT DISPLAY CONTROL
+ ***************************************************************/
+void Display_Lower_Digit_With_DP(char digit) { PORTB = array_with_dp[digit]; }
+void Display_Upper_Digit_With_DP(char digit) { PORTD = array_with_dp[digit]; }
+
+void Display_Lower_Digit_No_DP(char digit)   { PORTB = array_no_dp[digit]; }
+void Display_Upper_Digit_No_DP(char digit)   { PORTD = array_no_dp[digit]; }
+
+/***************************************************************
+ * MAIN PROGRAM (Part 2A, 2B, 2C logic unified)
+ ***************************************************************/
+void main(void)
+{
+    Init_UART();
+    Init_ADC();
+    Init_TRIS();
+
+    while (1)
+    {
+        float VREF = 4.096;
+        float RR;
+
+        // ---- PART 2A ----
+        Select_ADC_Channel(1);
+        RR = 200.0;
+
+        // ---- PART 2B ----
+        // Select_ADC_Channel(2);
+        // RR = 2000.0;
+
+        // ---- PART 2C ----
+        // Select_ADC_Channel(4);
+        // RR = 20000.0;
+
+        int num_step = Get_full_ADC();
+        float voltage_mv = num_step * 4.0;
+        float voltage = voltage_mv / 1000.0;
+
+        float RL_Ohms = (RR * voltage) / (VREF - voltage);
+        float RL_Kilo_Ohms = RL_Ohms / 1000.0;
+
+        DO_DISPLAY_D1((int)RL_Kilo_Ohms);
+        DO_DISPLAY_D2(RL_Kilo_Ohms);
+
+        printf("RL = %f K Ohms\r\n\n", RL_Kilo_Ohms);
+
+        // 7-Segment Display Logic
+        if (RL_Kilo_Ohms < 10.0)
+        {
+            char U = (int)RL_Kilo_Ohms;
+            char L = (int)((RL_Kilo_Ohms - U) * 10);
+            Display_Upper_Digit_With_DP(U);
+            Display_Lower_Digit_With_DP(L);
+            DECIMAL = 0;  // Turn ON decimal
+        }
+        else
+        {
+            char U = (int)RL_Kilo_Ohms / 10;
+            char L = (int)RL_Kilo_Ohms % 10;
+            Display_Upper_Digit_No_DP(U);
+            Display_Lower_Digit_No_DP(L);
+            DECIMAL = 1;  // Turn OFF decimal
+        }
+
+        WAIT_1_SEC();
+    }
+}

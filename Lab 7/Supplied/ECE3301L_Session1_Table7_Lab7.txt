@@ -1,0 +1,397 @@
+/***************************************************************
+ * ECE 3301L.01 (Tuesday Class) - Lab 7
+ * Bench 7
+ * Brandon Contreras & Daniele Ricciardelli
+ ***************************************************************/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <xc.h>
+#include <math.h>
+#include <p18f4620.h>
+#include <usart.h>
+
+// CONFIGURATION BITS
+#pragma config OSC   = INTIO67                                
+#pragma config WDT   = OFF                                       
+#pragma config LVP   = OFF                                       
+#pragma config BOREN = OFF 
+
+/***************************************************************
+ * MACROS
+ ***************************************************************/
+
+// PART 1 - Second LED
+#define SEC_LED PORTEbits.RE2
+
+// PART 3 - Traffic lights
+#define NS_RED     PORTAbits.RA1
+#define NS_GREEN   PORTAbits.RA2
+
+#define NSLT_RED   PORTCbits.RC2
+#define NSLT_GREEN PORTCbits.RC3
+
+#define EW_RED     PORTCbits.RC4
+#define EW_GREEN   PORTCbits.RC5
+
+#define EWLT_RED   PORTBbits.RB7
+#define EWLT_GREEN PORTEbits.RE0
+
+// Colors
+#define OFF    0
+#define RED    1
+#define GREEN  2
+#define YELLOW 3
+
+// PART 5 - Mode LED and switches
+#define MODE_LED  PORTEbits.RE1
+
+#define NSPED_SW  PORTAbits.RA3
+#define NSLT_SW   PORTAbits.RA5
+#define EWPED_SW  PORTAbits.RA4
+#define EWLT_SW   PORTCbits.RC0
+
+// 7-segment array
+char array_LED[10] = {0xFF, 0x79, 0x24, 0x30, 0x19,
+                      0x12, 0x02, 0x78, 0x00, 0x10};
+
+/***************************************************************
+ * FUNCTION PROTOTYPES
+ ***************************************************************/
+void init_UART(void);
+void putch(char);
+void Init_ADC(void);
+unsigned int Get_full_ADC(void);
+void Select_ADC_Channel(char);
+
+void Wait_One_Second(void);
+void Wait_Half_Second(void);
+void Wait_N_Seconds(char);
+
+void Set_NS(char);
+void Set_NSLT(char);
+void Set_EW(char);
+void Set_EWLT(char);
+
+void PED_Control(char, char);
+void Display_Upper_Digit(char);
+void Display_Lower_Digit(char);
+
+void Activate_Buzzer(void);
+void Deactivate_Buzzer(void);
+
+void Wait_One_Second_With_Beep(void);
+
+void Night_Mode(void);
+void Day_Mode(void);
+
+/***************************************************************
+ * UART & ADC
+ ***************************************************************/
+void init_UART(void)
+{
+    OpenUSART (USART_TX_INT_OFF & USART_RX_INT_OFF &
+               USART_ASYNCH_MODE & USART_EIGHT_BIT &
+               USART_CONT_RX & USART_BRGH_HIGH, 25);
+    OSCCON = 0x70;  // 8 MHz
+}
+
+void putch(char c)
+{
+    while (!TRMT);
+    TXREG = c;
+}
+
+void Init_ADC(void)
+{ 
+    ADCON0 = 0x01;  // Channel 0
+    ADCON1 = 0x0E;  // AN0-AN3 analog
+    ADCON2 = 0xA9;
+}
+
+unsigned int Get_full_ADC(void)
+{ 
+    ADCON0bits.GO = 1;
+    while (ADCON0bits.DONE);
+    return (ADRESH << 8) + ADRESL;
+}
+
+void Select_ADC_Channel(char channel)
+{ 
+    ADCON0 = (channel * 4) + 1;
+}
+
+/***************************************************************
+ * TIMING FUNCTIONS
+ ***************************************************************/
+void Wait_Half_Second(void)
+{
+    T0CON = 0x03;     // 16-bit, prescaler 1:16
+    TMR0L = 0xBD;
+    TMR0H = 0x0A;
+    INTCONbits.TMR0IF = 0;
+    T0CONbits.TMR0ON = 1;
+    while (!INTCONbits.TMR0IF);
+    T0CONbits.TMR0ON = 0;
+}
+
+void Wait_One_Second(void)
+{
+    SEC_LED = 1;
+    Wait_Half_Second();
+    SEC_LED = 0;
+    Wait_Half_Second();
+}
+
+void Wait_N_Seconds(char seconds)
+{
+    for (char i = 0; i < seconds; i++)
+    {
+        Wait_One_Second();
+    }
+}
+
+/***************************************************************
+ * TRAFFIC LIGHT CONTROL
+ ***************************************************************/
+void Set_NS(char color)
+{
+    switch (color)
+    {
+        case OFF:    NS_RED = 0; NS_GREEN = 0; break;
+        case RED:    NS_RED = 1; NS_GREEN = 0; break;
+        case GREEN:  NS_RED = 0; NS_GREEN = 1; break;
+        case YELLOW: NS_RED = 1; NS_GREEN = 1; break;
+    }
+}
+
+void Set_NSLT(char color)
+{
+    switch (color)
+    {
+        case OFF:    NSLT_RED = 0; NSLT_GREEN = 0; break;
+        case RED:    NSLT_RED = 1; NSLT_GREEN = 0; break;
+        case GREEN:  NSLT_RED = 0; NSLT_GREEN = 1; break;
+        case YELLOW: NSLT_RED = 1; NSLT_GREEN = 1; break;
+    }
+}
+
+void Set_EW(char color)
+{
+    switch (color)
+    {
+        case OFF:    EW_RED = 0; EW_GREEN = 0; break;
+        case RED:    EW_RED = 1; EW_GREEN = 0; break;
+        case GREEN:  EW_RED = 0; EW_GREEN = 1; break;
+        case YELLOW: EW_RED = 1; EW_GREEN = 1; break;
+    }
+}
+
+void Set_EWLT(char color)
+{
+    switch (color)
+    {
+        case OFF:    EWLT_RED = 0; EWLT_GREEN = 0; break;
+        case RED:    EWLT_RED = 1; EWLT_GREEN = 0; break;
+        case GREEN:  EWLT_RED = 0; EWLT_GREEN = 1; break;
+        case YELLOW: EWLT_RED = 1; EWLT_GREEN = 1; break;
+    }
+}
+
+/***************************************************************
+ * DISPLAY & BUZZER
+ ***************************************************************/
+void Display_Upper_Digit(char digit)
+{
+    PORTD = array_LED[digit];
+}
+
+void Display_Lower_Digit(char digit)
+{
+    PORTB = array_LED[digit];
+}
+
+void Activate_Buzzer(void)
+{
+    PR2     = 0xF9;
+    T2CON   = 0x05;
+    CCPR2L  = 0x4A;
+    CCP2CON = 0x3C;
+}
+
+void Deactivate_Buzzer(void)
+{
+    CCP2CON = 0x00;
+    PORTCbits.RC1 = 0;
+}
+
+void Wait_One_Second_With_Beep(void)
+{
+    SEC_LED = 1;
+    Activate_Buzzer();
+    Wait_Half_Second();
+    SEC_LED = 0;
+    Deactivate_Buzzer();
+    Wait_Half_Second();
+}
+
+/***************************************************************
+ * PEDESTRIAN CONTROL
+ ***************************************************************/
+void PED_Control(char Direction, char Num_Sec)
+{
+    Display_Upper_Digit(0);
+    Display_Lower_Digit(0);
+
+    for (char i = Num_Sec - 1; i > 0; i--)
+    {
+        if (Direction == 0)
+            Display_Upper_Digit(i);
+        else
+            Display_Lower_Digit(i);
+
+        Wait_One_Second_With_Beep();
+    }
+
+    Display_Upper_Digit(0);
+    Display_Lower_Digit(0);
+    Wait_One_Second_With_Beep();
+}
+
+/***************************************************************
+ * NIGHT MODE LOGIC
+ ***************************************************************/
+void Night_Mode(void)
+{
+    Set_NSLT(RED);
+    Set_EW(RED);
+    Set_EWLT(RED);
+    Set_NS(GREEN);
+
+    Wait_N_Seconds(6);
+
+    Set_NS(YELLOW);
+    Wait_N_Seconds(3);
+
+    Set_NS(RED);
+
+    if (EWLT_SW == 1)
+    {
+        Set_EWLT(GREEN);
+        Wait_N_Seconds(7);
+        Set_EWLT(YELLOW);
+        Wait_N_Seconds(3);
+        Set_EWLT(RED);
+    }
+
+    Set_EW(GREEN);
+    Wait_N_Seconds(6);
+
+    Set_EW(YELLOW);
+    Wait_N_Seconds(3);
+
+    Set_EW(RED);
+
+    if (NSLT_SW == 1)
+    {
+        Set_NSLT(GREEN);
+        Wait_N_Seconds(8);
+        Set_NSLT(YELLOW);
+        Wait_N_Seconds(3);
+        Set_NSLT(RED);
+    }
+}
+
+/***************************************************************
+ * DAY MODE LOGIC
+ ***************************************************************/
+void Day_Mode(void)
+{
+    printf("Day mode executes \r\n\n");
+
+    Set_NS(GREEN);
+    Set_EW(RED);
+    Set_EWLT(RED);
+    Set_NSLT(RED);
+
+    if (NSPED_SW == 1)
+    {
+        printf("Step1 condition \r\n\n");
+        PED_Control(0, 8);
+    }
+
+    Wait_N_Seconds(7);
+
+    Set_NS(YELLOW);
+    printf("NS goes yellow \r\n\n");
+    Wait_N_Seconds(3);
+
+    Set_NS(RED);
+
+    if (EWLT_SW == 1)
+    {
+        Set_EWLT(GREEN);
+        Wait_N_Seconds(8);
+        Set_EWLT(YELLOW);
+        Wait_N_Seconds(3);
+        Set_EWLT(RED);
+    }
+
+    Set_EW(GREEN);
+
+    if (EWPED_SW == 1)
+    {
+        PED_Control(0, 7);
+    }
+
+    Wait_N_Seconds(6);
+
+    Set_EW(YELLOW);
+    Wait_N_Seconds(3);
+
+    Set_EW(RED);
+
+    if (NSLT_SW == 1)
+    {
+        Set_NSLT(GREEN);
+        Wait_N_Seconds(7);
+        Set_NSLT(YELLOW);
+        Wait_N_Seconds(3);
+        Set_NSLT(RED);
+    }
+}
+
+/***************************************************************
+ * MAIN PROGRAM
+ ***************************************************************/
+void main(void)
+{
+    init_UART();
+    Init_ADC();
+
+    TRISA = 0xF9;  // Inputs and outputs set properly
+    TRISB = 0x00;
+    TRISC = 0x01;
+    TRISD = 0x00;
+    TRISE = 0x00;
+
+    while (1)
+    {
+        Select_ADC_Channel(0);
+        int num_step = Get_full_ADC();
+        float volt = 5.0 * num_step / 1024.0;
+
+        unsigned int MODE = volt < 2.5 ? 1 : 0;
+
+        if (MODE)  // Daytime
+        {
+            MODE_LED = 1;
+            Day_Mode();
+        }
+        else       // Nighttime
+        {
+            MODE_LED = 0;
+            Night_Mode();
+        }
+    }
+}
