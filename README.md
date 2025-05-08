@@ -1,6 +1,14 @@
 # ECE 3301 - Introduction to Microcontrollers
 Microcontroller programming, applications, and interfacing.
 
+The chip we used was the PIC18F4620 [https://www.microchip.com/en-us/product/pic18f4620]
+For the IDE, we used MPLAB X and XC8 compiler (doggy ass compiler, sometimes the code wouldnt run at all and I had to literally close and open the compiler so it could run. Insufferable amount of hours until we figured that out)
+To ship the code we used a PICKIT4, if that matters. 
+Most of the material presented was provided by the professor.
+
+A pre-made board was given to us for this course. Attached a picture of it:
+![image](https://github.com/user-attachments/assets/14c47e3d-212f-4e74-a146-19f665bfc178)
+
 ## Part 1
 For the first part of the course, we worked with Assembly for this archaic chip I fucking despised. Not because of the chip by itself, but because we were forced to code in Assembly FOR THAT SPECIFIC CHIP! If it was at least assembly x86 it would be OK, but not for this PIC chip. F***
 
