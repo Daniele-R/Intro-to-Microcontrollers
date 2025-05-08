@@ -3,7 +3,8 @@ Microcontroller programming, applications, and interfacing.
 
 - The chip we used was the PIC18F4620 [https://www.microchip.com/en-us/product/pic18f4620]
 - For the IDE, we used MPLAB X and XC8 compiler (doggy ass compiler, sometimes the code wouldnt run at all and I had to literally close and open the compiler so it could run. Insufferable amount of hours until we figured that out).
-- To ship the code we used a PICKIT4, if that matters. 
+- To ship the code we used a PICKIT4, if that matters.
+- We used a Logic Analyzer to analyze the signals as instructed.
 - Most of the material presented was provided by the professor.
 - Refer to each lab to see provided code/schematics and sources (what we did AKA supplied)
 
