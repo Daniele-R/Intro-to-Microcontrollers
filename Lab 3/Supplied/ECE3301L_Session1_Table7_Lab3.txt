@@ -1,0 +1,282 @@
+;***************************************************************
+; ECE3301L - Session #1 - Table #7 - Lab #3
+; Authors: Brandon Contreras & Daniele Ricciardelli
+; Microcontroller: PIC18F4620
+;***************************************************************
+
+; ---------------------------------------------------------------
+; PART 1 - Flash LEDs on PORTB and PORTE with a simple delay
+; ---------------------------------------------------------------
+
+#include <P18F4620.inc>
+
+    config OSC = INTIO67
+    config WDT = OFF
+    config LVP = OFF
+    config BOREN = OFF
+
+; Constants
+Delay1      equ 0xFA
+Delay2      equ 0xFA
+Counter_L   equ 0x20
+Counter_H   equ 0x21
+
+    ORG 0x0000
+
+START:
+    MOVLW 0x0F
+    MOVWF ADCON1              ; Set all pins to digital
+    CLRF TRISB
+    CLRF TRISE                ; PORTB & PORTE as outputs
+
+MAIN_LOOP:
+    MOVLW 0x05
+    MOVWF PORTB
+    MOVWF PORTE
+    CALL DELAY_ONE_SEC
+
+    MOVLW 0x0A
+    MOVWF PORTB
+    MOVWF PORTE
+    CALL DELAY_ONE_SEC
+
+    GOTO MAIN_LOOP
+
+; Delay subroutine (~1 second)
+DELAY_ONE_SEC:
+    MOVLW Delay1
+    MOVWF Counter_H
+LOOP_OUTER:
+    MOVLW Delay2
+    MOVWF Counter_L
+LOOP_INNER:
+    NOP
+    DECF Counter_L, F
+    BNZ LOOP_INNER
+    DECF Counter_H, F
+    BNZ LOOP_OUTER
+    RETURN
+
+    END
+
+; ---------------------------------------------------------------
+; PART 2 - Read lower 4 bits of PORTA and output to PORTB
+; ---------------------------------------------------------------
+
+#include <P18F4620.inc>
+
+    config OSC = INTIO67
+    config WDT = OFF
+    config LVP = OFF
+    config BOREN = OFF
+
+    ORG 0x0000
+
+START:
+    MOVLW 0x0F
+    MOVWF ADCON1
+    MOVLW 0xFF
+    MOVWF TRISA
+    CLRF TRISB
+
+MAIN_LOOP:
+    MOVF PORTA, W
+    ANDLW 0x0F
+    MOVWF PORTB
+    GOTO MAIN_LOOP
+
+    END
+
+; ---------------------------------------------------------------
+; PART 3 - Read lower 4 bits of PORTA and output to PORTC
+; ---------------------------------------------------------------
+
+#include <P18F4620.inc>
+
+    config OSC = INTIO67
+    config WDT = OFF
+    config LVP = OFF
+    config BOREN = OFF
+
+    ORG 0x0000
+
+START:
+    MOVLW 0x0F
+    MOVWF ADCON1
+    MOVLW 0xFF
+    MOVWF TRISA
+    CLRF TRISB
+    CLRF TRISC
+
+MAIN_LOOP:
+    MOVF PORTA, W
+    ANDLW 0x0F
+    MOVWF PORTC
+    GOTO MAIN_LOOP
+
+    END
+
+; ---------------------------------------------------------------
+; PART 4 - Count from 0 to 7 on PORTC with delay
+; ---------------------------------------------------------------
+
+#include <P18F4620.inc>
+
+    config OSC = INTIO67
+    config WDT = OFF
+    config LVP = OFF
+    config BOREN = OFF
+
+; Constants
+Delay1      equ 0xFF
+Delay2      equ 0xFF
+Counter_L   equ 0x20
+Counter_H   equ 0x21
+Color_Value equ 0x28
+Loop_Count  equ 0x29
+
+    ORG 0x0000
+
+START:
+    MOVLW 0x0F
+    MOVWF ADCON1
+    CLRF TRISC
+
+WHILE_LOOP:
+    CLRF Color_Value
+    MOVLW 0x08
+    MOVWF Loop_Count
+
+FOR_LOOP:
+    MOVF Color_Value, W
+    MOVWF PORTC
+    CALL DELAY_ONE_SEC
+    INCF Color_Value, F
+    DECF Loop_Count, F
+    BNZ FOR_LOOP
+
+    GOTO WHILE_LOOP
+
+DELAY_ONE_SEC:
+    MOVLW Delay1
+    MOVWF Counter_H
+LOOP_OUTER:
+    MOVLW Delay2
+    MOVWF Counter_L
+LOOP_INNER:
+    NOP
+    DECF Counter_L, F
+    BNZ LOOP_INNER
+    DECF Counter_H, F
+    BNZ LOOP_OUTER
+    RETURN
+
+    END
+
+; ---------------------------------------------------------------
+; PART 5 - Cycle through two arrays and output to PORTC and PORTD
+; ---------------------------------------------------------------
+
+#include <P18F4620.inc>
+
+    config OSC = INTIO67
+    config WDT = OFF
+    config LVP = OFF
+    config BOREN = OFF
+
+; Constants
+Delay1      equ 0xFA
+Delay2      equ 0xFA
+Counter_L   equ 0x20
+Counter_H   equ 0x21
+Loop_Count  equ 0x29
+
+    ORG 0x0000
+
+START:
+    MOVLW 0x0F
+    MOVWF ADCON1
+    CLRF TRISC
+    CLRF TRISD
+
+; Load color arrays into memory locations 0x10-0x17 and 0x20-0x27
+
+; D1 colors
+    MOVLW 0x05  ; Purple
+    MOVWF 0x10
+    MOVLW 0x07  ; White
+    MOVWF 0x11
+    MOVLW 0x03  ; Yellow
+    MOVWF 0x12
+    MOVLW 0x06  ; Cyan
+    MOVWF 0x13
+    MOVLW 0x01  ; Red
+    MOVWF 0x14
+    MOVLW 0x02  ; Green
+    MOVWF 0x15
+    MOVLW 0x04  ; Blue
+    MOVWF 0x16
+    CLRF 0x17   ; No light
+
+; D2 colors
+    MOVLW 0x04  ; Blue
+    MOVWF 0x20
+    MOVLW 0x05  ; Purple
+    MOVWF 0x21
+    MOVLW 0x07  ; White
+    MOVWF 0x22
+    CLRF 0x23   ; No light
+    MOVLW 0x01  ; Red
+    MOVWF 0x24
+    MOVLW 0x03  ; Yellow
+    MOVWF 0x25
+    MOVLW 0x06  ; Cyan
+    MOVWF 0x26
+    MOVLW 0x02  ; Green
+    MOVWF 0x27
+
+WHILE_LOOP:
+    LFSR 0, 0x0010
+    LFSR 1, 0x0020
+
+    MOVF INDF0, W
+    MOVWF PORTC
+    MOVF INDF1, W
+    MOVWF PORTD
+    MOVLW 0x07
+    MOVWF Loop_Count
+
+    CALL DELAY_ONE_SEC
+
+FOR_LOOP:
+    INCF FSR0L
+    MOVF INDF0, W
+    MOVWF PORTC
+
+    INCF FSR1L
+    MOVF INDF1, W
+    MOVWF PORTD
+
+    CALL DELAY_ONE_SEC
+
+    DECF Loop_Count, F
+    BNZ FOR_LOOP
+
+    GOTO WHILE_LOOP
+
+; Delay subroutine
+DELAY_ONE_SEC:
+    MOVLW Delay1
+    MOVWF Counter_H
+LOOP_OUTER:
+    MOVLW Delay2
+    MOVWF Counter_L
+LOOP_INNER:
+    NOP
+    DECF Counter_L, F
+    BNZ LOOP_INNER
+    DECF Counter_H, F
+    BNZ LOOP_OUTER
+    RETURN
+
+    END

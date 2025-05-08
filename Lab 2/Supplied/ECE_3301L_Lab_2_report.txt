@@ -1,0 +1,138 @@
+/*******************************************************
+ * ECE 3301L - Lab 2
+ * Author: Daniele Ricciardelli
+ * Microcontroller: PIC18F4620
+ *******************************************************/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <xc.h>
+#include <math.h>
+#include <p18f4620.h>
+
+// CONFIGURATION BITS
+#pragma config OSC = INTIO67   // Internal oscillator
+#pragma config WDT = OFF       // Watchdog Timer disabled
+#pragma config LVP = OFF       // Low-voltage ICSP disabled
+#pragma config BOREN = OFF     // Brown-out Reset disabled
+
+/*******************************************************
+ * PART 1 - Read lower 4 bits from PORTA and output to PORTB
+ *******************************************************/
+void part1() 
+{
+    char in;
+
+    TRISA = 0xFF;    // PORTA as input
+    TRISB = 0x00;    // PORTB as output
+    TRISC = 0x00;
+    TRISD = 0x00;
+    TRISE = 0x00;
+
+    ADCON1 = 0x0F;   // All pins as digital
+
+    while (1)
+    {
+        in = PORTA & 0x0F; // Mask upper bits, keep lower 4 bits
+        PORTB = in;        // Output to PORTB
+    }
+}
+
+/*******************************************************
+ * PART 2 - Read all 8 bits from PORTA and output to PORTC
+ *******************************************************/
+void part2() 
+{
+    char in;
+
+    TRISA = 0xFF;    // PORTA as input
+    TRISB = 0x00;
+    TRISC = 0x00;    // PORTC as output
+    TRISE = 0x00;
+
+    ADCON1 = 0x0F;   // All pins as digital
+
+    while (1)
+    {
+        in = PORTA;      // Read all 8 bits from PORTA
+        PORTC = in;      // Output to PORTC
+    }
+}
+
+/*******************************************************
+ * Delay function (~1 second delay)
+ *******************************************************/
+void Delay_One_Sec()
+{
+    for (int i = 0; i < 17955; i++);
+}
+
+/*******************************************************
+ * PART 3 - Count up from 0 to 7 on PORTC with 1-second delay
+ *******************************************************/
+void part3()
+{
+    TRISA = 0xFF;    // PORTA as input
+    TRISB = 0x00;
+    TRISC = 0x00;    // PORTC as output
+    TRISD = 0x00;
+
+    ADCON1 = 0x0F;   // All pins as digital
+
+    while (1)
+    {
+        for (char i = 0; i < 8; i++) 
+        {
+            PORTC = i;          // Display count value
+            Delay_One_Sec();    // Wait 1 second
+        }
+    }
+}
+
+/*******************************************************
+ * PART 4 - Cycle through predefined color patterns on PORTC and PORTD
+ *******************************************************/
+#define DELAY_CONST 18050
+
+void Delay_Custom()
+{
+    for (int i = 0; i < DELAY_CONST; i++);
+}
+
+void part4()
+{
+    // Color codes for D1 (PORTC) and D2 (PORTD)
+    const char d1Colors[8] = {5, 7, 3, 6, 1, 2, 4, 0};
+    const char d2Colors[8] = {4, 5, 7, 0, 1, 3, 6, 2};
+
+    TRISA = 0xFF;    // PORTA as input
+    TRISB = 0x00;
+    TRISC = 0x00;    // PORTC as output
+    TRISD = 0x00;    // PORTD as output
+    TRISE = 0x00;
+
+    ADCON1 = 0x0F;   // All pins as digital
+
+    while (1)
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            PORTC = d1Colors[i];   // Set color for D1
+            PORTD = d2Colors[i];   // Set color for D2
+            Delay_Custom();        // Wait
+        }
+    }
+}
+
+/*******************************************************
+ * MAIN FUNCTION
+ * Uncomment which part to run
+ *******************************************************/
+void main()
+{
+    // Uncomment the part you want to test:
+    // part1();
+    // part2();
+    // part3();
+    // part4();
+}

@@ -1,0 +1,19 @@
+I have found an error in the handout. Here is the correction:
+
+On page 4, the setup operations can evoked by using the following buttons:
+
+ 
+‘ CH-‘ : Time Setup Screen
+‘ CH  ’ : Alarm Setup Screen
+‘ CH+’ : Fan Temperature Setup Screen.
+and not by using '1', '2', and '3'
+
+Also, I have mentioned that I will send out a video for the project. I have decided that I will go over the operation of the project in each of the three sessions that I will conduct tomorrow (in room 9-435). I will make a recording of the presentation and I will forward the recorded video to each group the day after. Hence, I will send any video today but rather on Friday.
+
+You are welcome to attend any session tomorrow to have a live presentation on top of the video.
+
+In the meantime, it would be productive that your team utilizes the zip file to work on the project. First, edit the .h files to enter the pin assignments. Next, edit the .c files with the word 'screen' to clean the statements with '?' so that the files can be compiled. If not sure what to replace those '?', use the value 0 temporally. Once everything can be compiled, download the program onto the board and start checking the basic operations such as the TFT screen and the remote control.
+
+         Once the basic operation is up, then your team can work on editing the setup screen files and implement the control functions.
+
+                      The next task is to get the fan function to operate properly. The last task is the alarm function.

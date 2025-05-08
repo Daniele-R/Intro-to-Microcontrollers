@@ -1,0 +1,225 @@
+;***************************************************************
+; ECE 3301L - Lab 4
+; Authors: Brandon Contreras & Daniele Ricciardelli
+; Lab Section: 3301.01 (Tuesday Lab-Class)
+;***************************************************************
+
+#include <P18F4620.inc>
+
+    config OSC = INTIO67
+    config WDT = OFF
+    config LVP = OFF
+    config BOREN = OFF
+
+; ---------------------------------------------------------------
+; Variable declarations
+; ---------------------------------------------------------------
+InA     EQU 0x20         ; Input A (from PORTA)
+InB     EQU 0x21         ; Input B (from PORTB)
+Result  EQU 0x22         ; Result register
+
+; ---------------------------------------------------------------
+; Start of program
+; ---------------------------------------------------------------
+    ORG 0x0000
+
+START:
+    MOVLW 0x0F
+    MOVWF ADCON1            ; All pins digital
+
+    MOVLW 0xFF
+    MOVWF TRISA             ; PORTA as input
+    MOVWF TRISB             ; PORTB as input
+
+    MOVLW 0x0F
+    MOVWF TRISE             ; PORTE as input
+
+    CLRF TRISC              ; PORTC as output
+    CLRF TRISD              ; PORTD as output
+
+; ---------------------------------------------------------------
+; Main Loop
+; ---------------------------------------------------------------
+MAIN_LOOP:
+    BTFSC PORTE, 2
+    GOTO  PORTE2_EQ_1
+    GOTO  PORTE2_EQ_0
+
+PORTE2_EQ_1:
+    GOTO TASK_BCD
+
+PORTE2_EQ_0:
+    BTFSC PORTE, 1
+    GOTO PORTE21_EQ_01
+    GOTO PORTE21_EQ_00
+
+PORTE21_EQ_01:
+    BTFSC PORTE, 0
+    GOTO TASK_OR
+    GOTO TASK_AND
+
+PORTE21_EQ_00:
+    BTFSC PORTE, 0
+    GOTO TASK_ADD
+    GOTO TASK_COMP
+
+; ---------------------------------------------------------------
+; TASKS
+; ---------------------------------------------------------------
+
+TASK_COMP:
+    BCF PORTD, 6
+    BCF PORTD, 5
+    BCF PORTD, 4
+    CALL SUBROUTINE_COMP
+    GOTO MAIN_LOOP
+
+TASK_ADD:
+    BCF PORTD, 6
+    BCF PORTD, 5
+    BSF PORTD, 4
+    CALL SUBROUTINE_ADD
+    GOTO MAIN_LOOP
+
+TASK_AND:
+    BCF PORTD, 6
+    BSF PORTD, 5
+    BCF PORTD, 4
+    CALL SUBROUTINE_AND
+    GOTO MAIN_LOOP
+
+TASK_OR:
+    BCF PORTD, 6
+    BSF PORTD, 5
+    BSF PORTD, 4
+    CALL SUBROUTINE_OR
+    GOTO MAIN_LOOP
+
+TASK_BCD:
+    BSF PORTD, 6
+    BCF PORTD, 5
+    BCF PORTD, 4
+    CALL SUBROUTINE_BCD
+    GOTO MAIN_LOOP
+
+; ---------------------------------------------------------------
+; SUBROUTINES
+; ---------------------------------------------------------------
+
+; --- Complement (1's complement) ---
+SUBROUTINE_COMP:
+    MOVF PORTA, W
+    ANDLW 0x0F
+    MOVWF InA
+
+    COMF InA, W
+    ANDLW 0x0F
+
+    MOVWF Result
+    MOVFF Result, PORTC
+
+    BCF PORTD, 0
+    BNZ Z_CHECK_DONE1
+    BSF PORTD, 0
+
+Z_CHECK_DONE1:
+    RETURN
+
+; --- Addition ---
+SUBROUTINE_ADD:
+    MOVF PORTA, W
+    ANDLW 0x0F
+    MOVWF InA
+
+    MOVF PORTB, W
+    ANDLW 0x0F
+    MOVWF InB
+
+    MOVF InA, W
+    ADDWF InB, W
+
+    MOVWF Result
+    MOVFF Result, PORTC
+
+    BCF PORTD, 0
+    BNZ Z_CHECK_DONE2
+    BSF PORTD, 0
+
+Z_CHECK_DONE2:
+    RETURN
+
+; --- Logical AND ---
+SUBROUTINE_AND:
+    MOVF PORTA, W
+    ANDLW 0x0F
+    MOVWF InA
+
+    MOVF PORTB, W
+    ANDLW 0x0F
+    MOVWF InB
+
+    MOVF InA, W
+    ANDWF InB, W
+
+    MOVWF Result
+    MOVFF Result, PORTC
+
+    BCF PORTD, 0
+    BNZ Z_CHECK_DONE3
+    BSF PORTD, 0
+
+Z_CHECK_DONE3:
+    RETURN
+
+; --- Logical OR ---
+SUBROUTINE_OR:
+    MOVF PORTA, W
+    ANDLW 0x0F
+    MOVWF InA
+
+    MOVF PORTB, W
+    ANDLW 0x0F
+    MOVWF InB
+
+    MOVF InA, W
+    IORWF InB, W
+
+    MOVWF Result
+    MOVFF Result, PORTC
+
+    BCF PORTD, 0
+    BNZ Z_CHECK_DONE4
+    BSF PORTD, 0
+
+Z_CHECK_DONE4:
+    RETURN
+
+; --- BCD Correction ---
+SUBROUTINE_BCD:
+    MOVF PORTA, W
+    ANDLW 0x0F
+    MOVWF InA
+
+    MOVLW 0x09
+    CPFSGT InA, 1
+    GOTO NGREAT
+
+    MOVLW 0x06
+    ADDWF InA, W
+    GOTO GREAT
+
+NGREAT:
+    MOVF InA, W
+
+GREAT:
+    MOVWF Result
+    MOVFF Result, PORTC
+
+    BCF PORTD, 0
+    BNZ TEST_DONE
+    BSF PORTD, 0
+
+TEST_DONE:
+    RETURN
+
+    END

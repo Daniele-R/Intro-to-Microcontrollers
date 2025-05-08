@@ -1,0 +1,213 @@
+/***************************************************************
+ * ECE 3301L - Lab 5
+ * Authors: Brandon Contreras & Daniele Ricciardelli
+ * Section: 3301.01 (Tuesday Lab-Class)
+ ***************************************************************/
+
+#include <p18f4620.h>
+#include <stdio.h>
+#include <math.h>
+#include <usart.h>
+
+// Configuration Bits
+#pragma config OSC = INTIO67
+#pragma config WDT = OFF
+#pragma config LVP = OFF
+#pragma config BOREN = OFF
+
+/***************************************************************
+ * Function Prototypes
+ ***************************************************************/
+void Init_UART(void);
+void Init_ADC(void);
+void putch(char);
+unsigned int Get_Full_ADC(void);
+void Select_ADC_Channel(char);
+
+void DO_DISPLAY_UP(char);
+void DO_DISPLAY_LW(char);
+void DO_DISPLAY_D2(int);
+void DO_DISPLAY_D3(int);
+void Delay_One_Sec(void);
+
+// RGB Prototypes for D2 and D3
+void SET_D2_OFF(), SET_D2_RED(), SET_D2_GREEN(), SET_D2_YELLOW();
+void SET_D2_BLUE(), SET_D2_PURPLE(), SET_D2_CYAN(), SET_D2_WHITE();
+void SET_D3_OFF(), SET_D3_RED(), SET_D3_GREEN(), SET_D3_YELLOW();
+void SET_D3_BLUE(), SET_D3_PURPLE(), SET_D3_CYAN(), SET_D3_WHITE();
+
+/***************************************************************
+ * Macros for RGB Pin Mapping
+ ***************************************************************/
+#define D2_RED    PORTCbits.RC0
+#define D2_GREEN  PORTCbits.RC1
+#define D2_BLUE   PORTCbits.RC2
+
+#define D3_RED    PORTCbits.RC3
+#define D3_GREEN  PORTCbits.RC4
+#define D3_BLUE   PORTCbits.RC5
+
+/***************************************************************
+ * Global Variables
+ ***************************************************************/
+char array[10] = {0x40, 0x79, 0x24, 0x30, 0x19,
+                  0x12, 0x02, 0x78, 0x00, 0x10};
+
+/***************************************************************
+ * MAIN PROGRAM
+ ***************************************************************/
+void main(void)
+{
+    Init_UART();
+    Init_ADC();
+
+    TRISA = 0x0F;  // Lower 4 bits inputs (Temp sensor + Photoresistor)
+    TRISB = 0x00;  // Output to 7-segment display (Lower Digit)
+    TRISC = 0x00;  // RGB outputs (D2 & D3)
+    TRISD = 0x00;  // Output to 7-segment display (Upper Digit)
+    TRISE = 0x00;  // Output for extra display bits
+
+    while (1)
+    {
+        /************* Temperature Reading and Display *************/
+        Select_ADC_Channel(0);
+        int num_step = Get_Full_ADC();
+        float voltage_mv = num_step * 4.0;
+        float temperature_C = (1035.0 - voltage_mv) / 5.50;
+        float temperature_F = (1.80 * temperature_C) + 32;
+        int tempF = (int)temperature_F;
+
+        char U = tempF / 10;  // Upper digit
+        char L = tempF % 10;  // Lower digit
+
+        // Display upper and lower digits
+        DO_DISPLAY_UP(U);
+        DO_DISPLAY_LW(L);
+
+        // Display temperature pattern on RGB D2
+        DO_DISPLAY_D2(tempF);
+
+        // Color pattern on PORTE (binary value based on tempF tens place)
+        int color = tempF / 10;
+        PORTE = (PORTE & 0xF8) | (color & 0x07);
+        if (color >= 8) PORTE = 0x07;  // Max out at white
+
+        Delay_One_Sec();
+
+        printf("Voltage = %f (mV)\r\n", voltage_mv);
+        printf("Temperature = %d F\r\n\n", tempF);
+
+        /************* Light Sensor Reading and Display *************/
+        Select_ADC_Channel(2);
+        num_step = Get_Full_ADC();
+        int voltage_mv1 = num_step * 4;
+
+        printf("Light Voltage = %d mV\r\n\n", voltage_mv1);
+
+        DO_DISPLAY_D3(voltage_mv1);
+    }
+}
+
+/***************************************************************
+ * Display Functions
+ ***************************************************************/
+void DO_DISPLAY_UP(char digit) { PORTD = array[digit]; }
+void DO_DISPLAY_LW(char digit) { PORTB = array[digit]; }
+
+/***************************************************************
+ * UART Functions
+ ***************************************************************/
+void Init_UART(void)
+{
+    OpenUSART(USART_TX_INT_OFF & USART_RX_INT_OFF &
+              USART_ASYNCH_MODE & USART_EIGHT_BIT &
+              USART_CONT_RX & USART_BRGH_HIGH, 25);
+    OSCCON = 0x60;
+}
+
+void putch(char c)
+{
+    while (!TRMT);
+    TXREG = c;
+}
+
+/***************************************************************
+ * ADC Functions
+ ***************************************************************/
+void Init_ADC(void)
+{
+    ADCON0 = 0x01;
+    ADCON1 = 0x1B;  // AN0 - AN3 analog, rest digital
+    ADCON2 = 0xA9;  // Right justify, TAD and acquisition settings
+}
+
+void Select_ADC_Channel(char channel)
+{
+    ADCON0 = (channel * 4) + 1;
+}
+
+unsigned int Get_Full_ADC(void)
+{
+    ADCON0bits.GO = 1;
+    while (ADCON0bits.DONE);
+    return (ADRESH * 0x100) + ADRESL;
+}
+
+/***************************************************************
+ * Delay Function
+ ***************************************************************/
+void Delay_One_Sec(void)
+{
+    for (unsigned int j = 0; j < 0xFFFF; j++);
+}
+
+/***************************************************************
+ * RGB Display Logic for D2 (Temperature-based)
+ ***************************************************************/
+void DO_DISPLAY_D2(int T)
+{
+    if      (T < 30)            SET_D2_OFF();
+    else if (T < 39)            SET_D2_RED();
+    else if (T < 49)            SET_D2_GREEN();
+    else if (T < 59)            SET_D2_YELLOW();
+    else if (T < 69)            SET_D2_BLUE();
+    else if (T < 74)            SET_D2_PURPLE();
+    else if (T < 79)            SET_D2_CYAN();
+    else                        SET_D2_WHITE();
+}
+
+/***************************************************************
+ * RGB Display Logic for D3 (Light Sensor-based)
+ ***************************************************************/
+void DO_DISPLAY_D3(int mv)
+{
+    if      (mv < 2600) SET_D3_OFF();
+    else if (mv < 2900) SET_D3_RED();
+    else if (mv < 3200) SET_D3_GREEN();
+    else if (mv < 3600) SET_D3_BLUE();
+    else                SET_D3_WHITE();
+}
+
+/***************************************************************
+ * RGB Color Functions for D2
+ ***************************************************************/
+void SET_D2_OFF()    { D2_RED = 0; D2_GREEN = 0; D2_BLUE = 0; }
+void SET_D2_RED()    { D2_RED = 1; D2_GREEN = 0; D2_BLUE = 0; }
+void SET_D2_GREEN()  { D2_RED = 0; D2_GREEN = 1; D2_BLUE = 0; }
+void SET_D2_YELLOW() { D2_RED = 1; D2_GREEN = 1; D2_BLUE = 0; }
+void SET_D2_BLUE()   { D2_RED = 0; D2_GREEN = 0; D2_BLUE = 1; }
+void SET_D2_PURPLE() { D2_RED = 1; D2_GREEN = 0; D2_BLUE = 1; }
+void SET_D2_CYAN()   { D2_RED = 0; D2_GREEN = 1; D2_BLUE = 1; }
+void SET_D2_WHITE()  { D2_RED = 1; D2_GREEN = 1; D2_BLUE = 1; }
+
+/***************************************************************
+ * RGB Color Functions for D3
+ ***************************************************************/
+void SET_D3_OFF()    { D3_RED = 0; D3_GREEN = 0; D3_BLUE = 0; }
+void SET_D3_RED()    { D3_RED = 1; D3_GREEN = 0; D3_BLUE = 0; }
+void SET_D3_GREEN()  { D3_RED = 0; D3_GREEN = 1; D3_BLUE = 0; }
+void SET_D3_YELLOW() { D3_RED = 1; D3_GREEN = 1; D3_BLUE = 0; }
+void SET_D3_BLUE()   { D3_RED = 0; D3_GREEN = 0; D3_BLUE = 1; }
+void SET_D3_PURPLE() { D3_RED = 1; D3_GREEN = 0; D3_BLUE = 1; }
+void SET_D3_CYAN()   { D3_RED = 0; D3_GREEN = 1; D3_BLUE = 1; }
+void SET_D3_WHITE()  { D3_RED = 1; D3_GREEN = 1; D3_BLUE = 1; }
